@@ -1,0 +1,103 @@
+{
+  "info": {
+    "name": "Distributed Priority Job Queue",
+    "description": "Production-grade distributed job queue API: create jobs, verify idempotency, inspect stats, simulate retries and DLQ, replay DLQ jobs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8080"},
+    {"key": "jobId", "value": "00000000-0000-0000-0000-000000000000"},
+    {"key": "idempotencyKey", "value": "transfer-2026-0001"}
+  ],
+  "item": [
+    {
+      "name": "Create high-priority banking job",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": "{{baseUrl}}/api/v1/jobs",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"idempotencyKey\": \"transfer-2026-0001\",\n  \"type\": \"BANK_TRANSFER_SETTLEMENT\",\n  \"priority\": \"HIGH\",\n  \"payload\": {\n    \"from\": \"PL61109010140000071219812874\",\n    \"to\": \"PL27109010140000071219812875\",\n    \"amount\": \"1250.00\",\n    \"currency\": \"PLN\"\n  },\n  \"maxAttempts\": 4\n}"
+        }
+      }
+    },
+    {
+      "name": "Create same job again - idempotent 200",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": "{{baseUrl}}/api/v1/jobs",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"idempotencyKey\": \"transfer-2026-0001\",\n  \"type\": \"BANK_TRANSFER_SETTLEMENT\",\n  \"priority\": \"HIGH\",\n  \"payload\": {\n    \"from\": \"PL61109010140000071219812874\",\n    \"to\": \"PL27109010140000071219812875\",\n    \"amount\": \"1250.00\",\n    \"currency\": \"PLN\"\n  },\n  \"maxAttempts\": 4\n}"
+        }
+      }
+    },
+    {
+      "name": "Create conflicting idempotency request - 409",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": "{{baseUrl}}/api/v1/jobs",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"idempotencyKey\": \"transfer-2026-0001\",\n  \"type\": \"BANK_TRANSFER_SETTLEMENT\",\n  \"priority\": \"HIGH\",\n  \"payload\": {\n    \"from\": \"PL61109010140000071219812874\",\n    \"to\": \"PL27109010140000071219812875\",\n    \"amount\": \"9999.99\",\n    \"currency\": \"PLN\"\n  },\n  \"maxAttempts\": 4\n}"
+        }
+      }
+    },
+    {
+      "name": "Create retryable failure simulation",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": "{{baseUrl}}/api/v1/jobs",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"idempotencyKey\": \"retry-demo-0001\",\n  \"type\": \"RETRYABLE_DEMO\",\n  \"priority\": \"LOW\",\n  \"payload\": {\"simulateRetryableFailure\": true},\n  \"maxAttempts\": 3\n}"
+        }
+      }
+    },
+    {
+      "name": "Create permanent failure simulation",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": "{{baseUrl}}/api/v1/jobs",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"idempotencyKey\": \"permanent-demo-0001\",\n  \"type\": \"PERMANENT_DEMO\",\n  \"priority\": \"LOW\",\n  \"payload\": {\"simulatePermanentFailure\": true},\n  \"maxAttempts\": 4\n}"
+        }
+      }
+    },
+    {
+      "name": "Get job by id",
+      "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}"}
+    },
+    {
+      "name": "Get job by idempotency key",
+      "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/jobs/idempotency/{{idempotencyKey}}"}
+    },
+    {
+      "name": "Replay DLQ job",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}/replay",
+        "body": {"mode": "raw", "raw": "{\n  \"priority\": \"HIGH\"\n}"}
+      }
+    },
+    {
+      "name": "Stats",
+      "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/jobs/stats"}
+    },
+    {
+      "name": "Health",
+      "request": {"method": "GET", "url": "{{baseUrl}}/actuator/health"}
+    },
+    {
+      "name": "Prometheus metrics",
+      "request": {"method": "GET", "url": "{{baseUrl}}/actuator/prometheus"}
+    }
+  ]
+}
